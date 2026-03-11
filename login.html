@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — BioAuth</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+  <style>
+    .page-wrap { padding-top: 100px; padding-bottom: 60px; }
+
+    /* Confidence meter */
+    .conf-meter {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 12px 0;
+      display: none;
+    }
+
+    .conf-meter.visible { display: block; }
+
+    .conf-bar {
+      height: 6px;
+      background: var(--border-color);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .conf-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.4s ease, background 0.4s;
+      box-shadow: 0 0 8px currentColor;
+    }
+
+    .conf-low    { background: var(--accent-red);    width: 20%; color: var(--accent-red); }
+    .conf-medium { background: var(--accent-yellow); width: 60%; color: var(--accent-yellow); }
+    .conf-high   { background: var(--accent-green);  width: 100%; color: var(--accent-green); }
+
+    .verified-banner {
+      text-align: center;
+      padding: 28px 20px;
+    }
+
+    .verified-icon {
+      font-size: 52px;
+      display: block;
+      margin-bottom: 16px;
+      animation: successPop 0.5s cubic-bezier(0.34,1.56,0.64,1);
+    }
+
+    @keyframes successPop {
+      from { transform: scale(0); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+
+    .denied-banner {
+      text-align: center;
+      padding: 20px;
+    }
+
+    /* Glitch text animation for denied */
+    @keyframes glitch {
+      0%,100% { text-shadow: 2px 0 var(--accent-red), -2px 0 var(--accent-cyan); }
+      33%  { text-shadow: -2px 0 var(--accent-red), 2px 0 var(--accent-cyan); }
+      66%  { text-shadow: 2px 2px var(--accent-red), -2px -2px var(--accent-cyan); }
+    }
+
+    .denied-text {
+      font-family: var(--font-display);
+      font-size: 20px;
+      letter-spacing: 3px;
+      color: var(--accent-red);
+      animation: glitch 0.4s steps(1) 3;
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">
+    <div class="nav-logo-icon">⬡</div>
+    <span class="nav-logo-text">BIOAUTH</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="register.html">Register</a></li>
+    <li><a href="login.html" class="active">Login</a></li>
+    <li><a href="about.html">About</a></li>
+  </ul>
+</nav>
+
+<div class="page-wrap">
+  <div class="section-sm">
+
+    <!-- Step indicators -->
+    <div class="steps fade-in">
+      <div class="step active" id="step-1-ind">
+        <div class="step-num">1</div>
+        <span class="step-label">Credentials</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step" id="step-2-ind">
+        <div class="step-num">2</div>
+        <span class="step-label">Face Verify</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step" id="step-3-ind">
+        <div class="step-num">3</div>
+        <span class="step-label">Access</span>
+      </div>
+    </div>
+
+    <!-- ===== STEP 1: Credentials ===== -->
+    <div class="auth-card fade-in" id="step-cred">
+      <div class="auth-header">
+        <div class="auth-icon">🔐</div>
+        <h1 class="auth-title">Sign In</h1>
+        <p class="auth-subtitle">Step 1 — Verify your identity credentials</p>
+      </div>
+
+      <div id="cred-alert" class="alert alert-hidden"></div>
+
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <div class="input-wrapper">
+          <input type="text" class="form-input" id="username" placeholder="Your username" autocomplete="username" />
+          <span class="input-icon">👤</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <div class="input-wrapper">
+          <input type="password" class="form-input" id="password" placeholder="Your password" autocomplete="current-password" />
+          <span class="input-icon">🔒</span>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full mt-16" id="btn-verify-creds">
+        VERIFY &amp; CONTINUE →
+      </button>
+
+      <div class="divider">
+        <div class="divider-line"></div>
+        <span class="divider-text">or</span>
+        <div class="divider-line"></div>
+      </div>
+
+      <p class="text-center text-sm text-muted">
+        New user? <a href="register.html" class="link">Create an account</a>
+      </p>
+    </div>
+
+    <!-- ===== STEP 2: Face Verification ===== -->
+    <div class="auth-card fade-in hidden" id="step-face">
+      <div class="auth-header">
+        <div class="auth-icon">👁️</div>
+        <h1 class="auth-title">Face Verify</h1>
+        <p class="auth-subtitle" id="face-username-label">Step 2 — Verifying identity...</p>
+      </div>
+
+      <div id="face-alert" class="alert alert-info">
+        🔄 Loading face recognition models...
+      </div>
+
+      <!-- Progress bar for model load -->
+      <div class="progress-bar" id="model-prog">
+        <div class="progress-fill" id="model-fill" style="width:0%"></div>
+      </div>
+
+      <!-- Camera -->
+      <div class="camera-container" id="cam-box" style="display:none;">
+        <video id="video" autoplay muted playsinline></video>
+        <canvas id="canvas"></canvas>
+        <div class="camera-overlay">
+          <div class="scan-line"></div>
+          <div class="camera-corner corner-tl"></div>
+          <div class="camera-corner corner-tr"></div>
+          <div class="camera-corner corner-bl"></div>
+          <div class="camera-corner corner-br"></div>
+          <div class="face-guide"></div>
+        </div>
+        <div class="camera-status" id="cam-status">INITIALIZING...</div>
+      </div>
+
+      <!-- Confidence meter -->
+      <div class="conf-meter" id="conf-meter">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-family:var(--font-display); font-size:10px; letter-spacing:2px; color:var(--text-secondary); text-transform:uppercase;">Match Confidence</span>
+          <span id="conf-pct" style="font-family:var(--font-display); font-size:14px; font-weight:700; color:var(--accent-cyan);">—</span>
+        </div>
+        <div class="conf-bar">
+          <div class="conf-fill" id="conf-fill" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- Overall scan progress bar -->
+      <div class="progress-bar" id="scan-prog" style="display:none;">
+        <div class="progress-fill" id="scan-fill" style="width:0%"></div>
+      </div>
+
+      <div class="flex" style="gap:8px; margin-top:8px;">
+        <button class="btn btn-primary btn-full" id="btn-start-verify" style="display:none;" disabled>
+          <span class="spinner" id="verify-spinner" style="display:none;"></span>
+           VERIFY MY FACE
+        </button>
+        <button class="btn btn-secondary" id="btn-back" style="display:none; min-width:100px;">
+          ← BACK
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== STEP 3: Result ===== -->
+    <div class="auth-card fade-in hidden" id="step-result">
+      <!-- Content injected by JS -->
+    </div>
+
+  </div>
+</div>
+
+<script src="auth.js"></script>
+<script src="face-auth.js"></script>
+<script>
+  Auth.redirectIfLoggedIn('dashboard.html');
+
+  // ---- DOM ----
+  const credCard   = document.getElementById('step-cred');
+  const faceCard   = document.getElementById('step-face');
+  const resultCard = document.getElementById('step-result');
+
+  const step1Ind = document.getElementById('step-1-ind');
+  const step2Ind = document.getElementById('step-2-ind');
+  const step3Ind = document.getElementById('step-3-ind');
+
+  const credAlert  = document.getElementById('cred-alert');
+  const faceAlert  = document.getElementById('face-alert');
+
+  const usernameEl  = document.getElementById('username');
+  const passwordEl  = document.getElementById('password');
+  const btnVerifyCreds = document.getElementById('btn-verify-creds');
+  const btnStartVerify = document.getElementById('btn-start-verify');
+  const btnBack        = document.getElementById('btn-back');
+
+  const videoEl   = document.getElementById('video');
+  const canvasEl  = document.getElementById('canvas');
+  const camBox    = document.getElementById('cam-box');
+  const camStatus = document.getElementById('cam-status');
+  const confMeter = document.getElementById('conf-meter');
+  const confFill  = document.getElementById('conf-fill');
+  const confPct   = document.getElementById('conf-pct');
+  const scanProg  = document.getElementById('scan-prog');
+  const scanFill  = document.getElementById('scan-fill');
+  const modelProg = document.getElementById('model-prog');
+  const modelFill = document.getElementById('model-fill');
+  const verifySpinner = document.getElementById('verify-spinner');
+
+  let storedDescriptor = null;
+  let currentUsername  = '';
+  let isVerifying = false;
+
+  function showAlert(el, msg, type = 'error') {
+    el.className = `alert alert-${type}`;
+    el.innerHTML = `<span>${msg}</span>`;
+  }
+  function hideAlert(el) { el.className = 'alert alert-hidden'; }
+
+  // ---- Enter key submit ----
+  [usernameEl, passwordEl].forEach(el => {
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Enter') btnVerifyCreds.click();
+    });
+  });
+
+  // ---- STEP 1: Verify credentials ----
+  btnVerifyCreds.addEventListener('click', async () => {
+    hideAlert(credAlert);
+    const u = usernameEl.value.trim();
+    const p = passwordEl.value;
+    if (!u || !p) { showAlert(credAlert, 'Please enter username and password.', 'error'); return; }
+
+    btnVerifyCreds.disabled = true;
+    btnVerifyCreds.innerHTML = '<span class="spinner"></span> CHECKING...';
+
+    const result = await Auth.verifyCredentials(u, p);
+    if (!result.success) {
+      showAlert(credAlert, '❌ ' + result.message, 'error');
+      btnVerifyCreds.disabled = false;
+      btnVerifyCreds.innerHTML = 'VERIFY &amp; CONTINUE →';
+      return;
+    }
+
+    storedDescriptor = result.faceDescriptor;
+    currentUsername  = u;
+    goToFaceVerify();
+  });
+
+  function goToFaceVerify() {
+    credCard.classList.add('hidden');
+    faceCard.classList.remove('hidden');
+    step1Ind.classList.remove('active');
+    step1Ind.classList.add('completed');
+    step2Ind.classList.add('active');
+    document.getElementById('face-username-label').textContent =
+      `Verifying: ${currentUsername}`;
+    loadFaceSystem();
+  }
+
+  btnBack.addEventListener('click', () => {
+    FaceAuth.stopCamera();
+    faceCard.classList.add('hidden');
+    credCard.classList.remove('hidden');
+    step2Ind.classList.remove('active');
+    step1Ind.classList.remove('completed');
+    step1Ind.classList.add('active');
+    btnVerifyCreds.disabled = false;
+    btnVerifyCreds.innerHTML = 'VERIFY &amp; CONTINUE →';
+    isVerifying = false;
+  });
+
+  // ---- Load models + camera ----
+  async function loadFaceSystem() {
+    modelProg.style.display = 'block';
+    let si = 0;
+    try {
+      await FaceAuth.loadModels((msg) => {
+        si = Math.min(si + 1, 3);
+        modelFill.style.width = (si / 3 * 70) + '%';
+        showAlert(faceAlert, '🔄 ' + msg, 'info');
+      });
+
+      showAlert(faceAlert, '📷 Starting camera...', 'info');
+      await FaceAuth.startCamera(videoEl);
+      modelFill.style.width = '100%';
+      setTimeout(() => modelProg.style.display = 'none', 300);
+
+      camBox.style.display = 'block';
+      confMeter.classList.add('visible');
+      scanProg.style.display = 'block';
+      btnStartVerify.style.display = 'flex';
+      btnStartVerify.disabled = false;
+      btnBack.style.display = 'flex';
+
+      showAlert(faceAlert, '✅ Look at the camera, then click VERIFY MY FACE.', 'success');
+    } catch (err) {
+      showAlert(faceAlert, '❌ ' + err.message, 'error');
+      btnBack.style.display = 'flex';
+    }
+  }
+
+  // ---- STEP 2: Face verification ----
+  btnStartVerify.addEventListener('click', async () => {
+    if (isVerifying) return;
+    isVerifying = true;
+    btnStartVerify.disabled = true;
+    verifySpinner.style.display = 'inline-block';
+
+    try {
+      const result = await FaceAuth.verifyFace(
+        videoEl, canvasEl, storedDescriptor,
+        (status, progress) => {
+          camStatus.textContent = status.toUpperCase();
+          scanFill.style.width = (progress * 100) + '%';
+
+          // Parse confidence from status string
+          const match = status.match(/(\d+)%/);
+          if (match) {
+            const pct = parseInt(match[1]);
+            confPct.textContent = pct + '%';
+            confFill.style.width = pct + '%';
+
+            if (pct >= 65) {
+              confFill.className = 'conf-fill conf-high';
+              confPct.style.color = 'var(--accent-green)';
+            } else if (pct >= 40) {
+              confFill.className = 'conf-fill conf-medium';
+              confPct.style.color = 'var(--accent-yellow)';
+            } else {
+              confFill.className = 'conf-fill conf-low';
+              confPct.style.color = 'var(--accent-red)';
+            }
+          }
+          showAlert(faceAlert, '🔍 ' + status, 'info');
+        }
+      );
+
+      FaceAuth.stopCamera();
+
+      if (result.verified) {
+        const session = Auth.createSession(currentUsername);
+        showVerified(result);
+      } else {
+        showDenied(result);
+      }
+
+    } catch (err) {
+      showAlert(faceAlert, '❌ ' + err.message, 'error');
+      isVerifying = false;
+      btnStartVerify.disabled = false;
+      verifySpinner.style.display = 'none';
+    }
+  });
+
+  // ---- Result Screens ----
+  function showVerified(result) {
+    faceCard.classList.add('hidden');
+    resultCard.classList.remove('hidden');
+    step2Ind.classList.add('completed');
+    step2Ind.classList.remove('active');
+    step3Ind.classList.add('active', 'completed');
+
+    resultCard.innerHTML = `
+      <div class="verified-banner">
+        <span class="verified-icon">✅</span>
+        <h2 class="auth-title" style="color:var(--accent-green);">ACCESS GRANTED</h2>
+        <p class="auth-subtitle" style="margin-top:8px;">Identity verified successfully</p>
+
+        <div style="background:rgba(0,255,136,0.05); border:1px solid rgba(0,255,136,0.2);
+             border-radius:8px; padding:18px; margin:24px 0; text-align:left;">
+          <div style="font-family:var(--font-display); font-size:10px; letter-spacing:2px;
+               color:var(--accent-green); margin-bottom:12px;">AUTHENTICATION REPORT</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div>
+              <div style="font-family:var(--font-display); font-size:10px; letter-spacing:1.5px;
+                   text-transform:uppercase; color:var(--text-muted);">User</div>
+              <div style="font-family:var(--font-mono); color:var(--text-primary); margin-top:3px;">${currentUsername}</div>
+            </div>
+            <div>
+              <div style="font-family:var(--font-display); font-size:10px; letter-spacing:1.5px;
+                   text-transform:uppercase; color:var(--text-muted);">Confidence</div>
+              <div style="font-family:var(--font-mono); color:var(--accent-green); margin-top:3px;">${result.confidence}</div>
+            </div>
+            <div>
+              <div style="font-family:var(--font-display); font-size:10px; letter-spacing:1.5px;
+                   text-transform:uppercase; color:var(--text-muted);">Distance</div>
+              <div style="font-family:var(--font-mono); color:var(--text-primary); margin-top:3px;">${result.distance.toFixed(4)}</div>
+            </div>
+            <div>
+              <div style="font-family:var(--font-display); font-size:10px; letter-spacing:1.5px;
+                   text-transform:uppercase; color:var(--text-muted);">Frames</div>
+              <div style="font-family:var(--font-mono); color:var(--text-primary); margin-top:3px;">${result.attempts}</div>
+            </div>
+          </div>
+        </div>
+
+        <a href="dashboard.html" class="btn btn-success btn-full" style="font-size:13px; padding:15px;">
+          → ENTER DASHBOARD
+        </a>
+      </div>
+    `;
+  }
+
+  function showDenied(result) {
+    faceCard.classList.add('hidden');
+    resultCard.classList.remove('hidden');
+    step3Ind.classList.add('active');
+
+    resultCard.innerHTML = `
+      <div class="denied-banner">
+        <div style="font-size:52px; margin-bottom:16px;">❌</div>
+        <div class="denied-text">ACCESS DENIED</div>
+        <p style="color:var(--text-secondary); margin-top:12px; margin-bottom:20px;">
+          Face did not match the registered profile.<br>Best match: ${result.confidence}
+        </p>
+
+        <div style="background:rgba(255,45,85,0.05); border:1px solid rgba(255,45,85,0.2);
+             border-radius:8px; padding:16px; margin-bottom:24px; text-align:left;">
+          <div style="font-size:12px; color:var(--text-secondary); line-height:1.7;">
+            <b style="color:var(--text-primary);">Tips to improve match:</b><br>
+            • Ensure good lighting on your face<br>
+            • Remove glasses or hats<br>
+            • Look straight at the camera<br>
+            • Clear the camera lens
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+          <button class="btn btn-secondary" onclick="retryFace()">↺ TRY AGAIN</button>
+          <a href="register.html" class="btn btn-danger">RE-REGISTER</a>
+        </div>
+      </div>
+    `;
+  }
+
+  function retryFace() {
+    resultCard.classList.add('hidden');
+    faceCard.classList.remove('hidden');
+    step3Ind.classList.remove('active', 'completed');
+    step2Ind.classList.remove('completed');
+    step2Ind.classList.add('active');
+    isVerifying = false;
+    btnStartVerify.disabled = false;
+    verifySpinner.style.display = 'none';
+    scanFill.style.width = '0%';
+    confFill.style.width = '0%';
+    confPct.textContent = '—';
+    loadFaceSystem();
+  }
+
+  window.retryFace = retryFace;
+</script>
+</body>
+</html>

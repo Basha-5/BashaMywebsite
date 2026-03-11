@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BioAuth — Behavioral Biometrics System</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* ---- Hero ---- */
+    .hero {
+      min-height: calc(100vh - 80px);
+      display: flex;
+      align-items: center;
+      padding: 0 48px;
+    }
+
+    .hero-content {
+      max-width: 680px;
+      animation: heroIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes heroIn {
+      from { opacity: 0; transform: translateY(40px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0,245,255,0.07);
+      border: 1px solid rgba(0,245,255,0.2);
+      border-radius: 100px;
+      padding: 6px 16px;
+      font-family: var(--font-display);
+      font-size: 10px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--accent-cyan);
+      margin-bottom: 28px;
+    }
+
+    .dot-pulse {
+      width: 7px;
+      height: 7px;
+      background: var(--accent-green);
+      border-radius: 50%;
+      animation: dotPulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes dotPulse {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%  { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(38px, 6vw, 72px);
+      font-weight: 900;
+      line-height: 1.0;
+      letter-spacing: 2px;
+      margin-bottom: 28px;
+    }
+
+    .hero-title .line1 { color: var(--text-primary); display: block; }
+    .hero-title .line2 {
+      display: block;
+      background: linear-gradient(135deg, var(--accent-cyan) 0%, #7b61ff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-desc {
+      font-size: 18px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      margin-bottom: 40px;
+      max-width: 520px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .hero-visual {
+      position: absolute;
+      right: 6%;
+      top: 50%;
+      transform: translateY(-50%);
+      width: min(440px, 40vw);
+      animation: visualIn 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+    }
+
+    @keyframes visualIn {
+      from { opacity: 0; transform: translateY(-50%) translateX(40px); }
+      to   { opacity: 1; transform: translateY(-50%) translateX(0); }
+    }
+
+    .face-ring {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ring {
+      position: absolute;
+      border-radius: 50%;
+      border-style: solid;
+    }
+
+    .ring-1 {
+      inset: 0;
+      border-width: 1px;
+      border-color: rgba(0,245,255,0.2);
+      animation: ringRotate 20s linear infinite;
+    }
+
+    .ring-2 {
+      inset: 30px;
+      border-width: 1px;
+      border-color: rgba(0,102,255,0.25);
+      animation: ringRotate 14s linear infinite reverse;
+    }
+
+    .ring-3 {
+      inset: 60px;
+      border-width: 1px;
+      border-color: rgba(0,245,255,0.15);
+      animation: ringRotate 10s linear infinite;
+    }
+
+    @keyframes ringRotate { to { transform: rotate(360deg); } }
+
+    .ring-dot {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background: var(--accent-cyan);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--accent-cyan);
+    }
+
+    .ring-1 .ring-dot { top: -3px; left: 50%; transform: translateX(-50%); }
+    .ring-2 .ring-dot { top: -3px; left: 50%; transform: translateX(-50%); background: #7b61ff; box-shadow: 0 0 8px #7b61ff; }
+
+    .face-inner {
+      width: 52%;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,102,255,0.15) 0%, rgba(0,245,255,0.05) 100%);
+      border: 2px solid rgba(0,245,255,0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 64px;
+      animation: innerGlow 3s ease-in-out infinite;
+      box-shadow: 0 0 40px rgba(0,102,255,0.2), inset 0 0 30px rgba(0,245,255,0.06);
+    }
+
+    @keyframes innerGlow {
+      0%,100% { box-shadow: 0 0 30px rgba(0,102,255,0.2), inset 0 0 20px rgba(0,245,255,0.05); }
+      50%  { box-shadow: 0 0 60px rgba(0,102,255,0.35), inset 0 0 40px rgba(0,245,255,0.1); }
+    }
+
+    .scan-lines-visual {
+      position: absolute;
+      inset: 90px;
+      overflow: hidden;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .scan-v {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      bottom: 0;
+      width: 1px;
+      background: linear-gradient(to bottom, transparent, var(--accent-cyan), transparent);
+      opacity: 0.3;
+      animation: scanV 2s ease-in-out infinite alternate;
+    }
+
+    .scan-h {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--accent-cyan), transparent);
+      opacity: 0.3;
+      animation: scanH 2s ease-in-out infinite alternate;
+    }
+
+    @keyframes scanV {
+      0%   { transform: translateX(-30px); }
+      100% { transform: translateX(30px); }
+    }
+
+    @keyframes scanH {
+      0%   { transform: translateY(-20px); }
+      100% { transform: translateY(20px); }
+    }
+
+    /* ---- Features section ---- */
+    .features { padding: 100px 48px; max-width: 1200px; margin: 0 auto; }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      margin-top: 56px;
+    }
+
+    .feature-card {
+      padding: 32px 28px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      transition: var(--transition);
+      cursor: default;
+      animation: cardIn 0.6s ease both;
+    }
+
+    .feature-card:nth-child(1) { animation-delay: 0.1s; }
+    .feature-card:nth-child(2) { animation-delay: 0.2s; }
+    .feature-card:nth-child(3) { animation-delay: 0.3s; }
+    .feature-card:nth-child(4) { animation-delay: 0.4s; }
+
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .feature-card:hover {
+      border-color: var(--border-glow);
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-cyan);
+    }
+
+    .feature-icon {
+      font-size: 32px;
+      margin-bottom: 18px;
+      display: block;
+    }
+
+    .feature-title {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+
+    .feature-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+
+    /* ---- Stats ---- */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border-color);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow: hidden;
+      max-width: 700px;
+      margin: 60px auto 0;
+    }
+
+    .stat {
+      background: var(--bg-card);
+      padding: 32px;
+      text-align: center;
+    }
+
+    .stat-num {
+      font-family: var(--font-display);
+      font-size: 36px;
+      font-weight: 900;
+      color: var(--accent-cyan);
+      display: block;
+      line-height: 1;
+      text-shadow: 0 0 20px rgba(0,245,255,0.4);
+    }
+
+    .stat-label {
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-top: 6px;
+      font-family: var(--font-display);
+    }
+
+    /* ---- CTA ---- */
+    .cta {
+      text-align: center;
+      padding: 80px 48px 120px;
+    }
+
+    .cta-title {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      margin-bottom: 14px;
+    }
+
+    .cta-sub { color: var(--text-secondary); font-size: 15px; margin-bottom: 32px; }
+
+    .cta-buttons {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    /* ---- Footer ---- */
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding: 24px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== NAVBAR ===== -->
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">
+    <div class="nav-logo-icon">⬡</div>
+    <span class="nav-logo-text">BIOAUTH</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="index.html" class="active">Home</a></li>
+    <li><a href="register.html">Register</a></li>
+    <li><a href="login.html">Login</a></li>
+    <li><a href="about.html">About</a></li>
+    <li><a href="dashboard.html">Dashboard</a></li>
+  </ul>
+</nav>
+
+<!-- ===== PAGE ===== -->
+<div class="page-wrap">
+
+  <!-- Hero -->
+  <section class="hero" style="position:relative; overflow:hidden;">
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="dot-pulse"></span>
+        System Active — Biometric Verification Enabled
+      </div>
+      <h1 class="hero-title">
+        <span class="line1">SECURE ACCESS</span>
+        <span class="line2">BIOMETRIC<br>AUTHENTICATION</span>
+      </h1>
+      <p class="hero-desc">
+        Next-generation identity verification combining facial recognition with
+        behavioral analysis. Your face is your password — no tokens, no keys,
+        just you.
+      </p>
+      <div class="hero-actions">
+        <a href="register.html" class="btn btn-primary">
+          ⬡ Create Account
+        </a>
+        <a href="login.html" class="btn btn-secondary">
+          → Sign In
+        </a>
+        <a href="about.html" class="btn btn-secondary">
+          ℹ About System
+        </a>
+      </div>
+    </div>
+
+    <!-- Visual -->
+    <div class="hero-visual">
+      <div class="face-ring">
+        <div class="ring ring-1"><div class="ring-dot"></div></div>
+        <div class="ring ring-2"><div class="ring-dot"></div></div>
+        <div class="ring ring-3"></div>
+        <div class="face-inner">
+          🧬
+          <div class="scan-lines-visual">
+            <div class="scan-v"></div>
+            <div class="scan-h"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <div style="padding: 0 48px;">
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-num">128</span>
+        <div class="stat-label">Dimension Vector</div>
+      </div>
+      <div class="stat">
+        <span class="stat-num">99%</span>
+        <div class="stat-label">Accuracy Rate</div>
+      </div>
+      <div class="stat">
+        <span class="stat-num">&lt;1s</span>
+        <div class="stat-label">Verification Speed</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <div class="features">
+    <div>
+      <div class="badge badge-cyan">Core Features</div>
+      <h2 class="page-title" style="margin-top:16px; font-size:30px;">How It Works</h2>
+      <p class="page-subtitle">Multi-layer biometric security combining classical credentials with real-time facial analysis.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <span class="feature-icon">👤</span>
+        <div class="feature-title">User Registration</div>
+        <p class="feature-desc">Securely enroll with a username, hashed password, and a 128-dimension facial descriptor captured via your webcam.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🧬</span>
+        <div class="feature-title">Face Recognition</div>
+        <p class="feature-desc">Deep learning neural network extracts 128 unique facial landmarks and encodes them into a biometric template.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🔐</span>
+        <div class="feature-title">Two-Factor Login</div>
+        <p class="feature-desc">Login requires both your password AND live face match — combining knowledge and biometric factors.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">📊</span>
+        <div class="feature-title">Behavioral Analysis</div>
+        <p class="feature-desc">Continuous authentication monitors behavioral patterns to ensure ongoing session integrity.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta">
+    <h2 class="cta-title">READY TO GET STARTED?</h2>
+    <p class="cta-sub">Register your biometric profile in under 2 minutes.</p>
+    <div class="cta-buttons">
+      <a href="register.html" class="btn btn-primary" style="padding:16px 40px; font-size:13px;">
+        ⬡ REGISTER NOW
+      </a>
+      <a href="about.html" class="btn btn-secondary" style="padding:16px 40px; font-size:13px;">
+        LEARN MORE →
+      </a>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <span>© 2024 BIOAUTH SYSTEM — Behavioral Biometrics Authentication</span>
+    <span style="color: var(--accent-cyan); font-family: var(--font-display);">SECURE · PRIVATE · FAST</span>
+  </footer>
+
+</div>
+
+<script src="auth.js"></script>
+<script>
+  // Redirect to dashboard if already logged in
+  Auth.redirectIfLoggedIn('dashboard.html');
+</script>
+</body>
+</html>

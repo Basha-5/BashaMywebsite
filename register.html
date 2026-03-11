@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register — BioAuth</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+  <style>
+    .page-wrap { padding-top: 100px; padding-bottom: 60px; }
+
+    /* Password strength bar */
+    .strength-bar { display: flex; gap: 4px; margin-top: 8px; }
+    .strength-seg {
+      flex: 1; height: 3px; border-radius: 3px;
+      background: var(--border-color);
+      transition: background 0.3s;
+    }
+    .strength-0 .strength-seg { background: var(--border-color); }
+    .strength-1 .strength-seg:nth-child(-n+1) { background: var(--accent-red); }
+    .strength-2 .strength-seg:nth-child(-n+2) { background: var(--accent-yellow); }
+    .strength-3 .strength-seg:nth-child(-n+3) { background: #ff8c00; }
+    .strength-4 .strength-seg:nth-child(-n+4) { background: var(--accent-green); }
+
+    .strength-label {
+      font-family: var(--font-display);
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      margin-top: 5px;
+    }
+
+    /* Capture counter */
+    .capture-ring {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 12px;
+      position: relative;
+    }
+
+    .capture-ring svg { transform: rotate(-90deg); }
+
+    .ring-progress {
+      stroke: var(--accent-cyan);
+      stroke-width: 4;
+      fill: none;
+      stroke-linecap: round;
+      stroke-dasharray: 220;
+      stroke-dashoffset: 220;
+      transition: stroke-dashoffset 0.4s ease;
+      filter: drop-shadow(0 0 4px rgba(0,245,255,0.7));
+    }
+
+    .ring-bg {
+      stroke: rgba(0,245,255,0.1);
+      stroke-width: 4;
+      fill: none;
+    }
+
+    .ring-num {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+    }
+
+    /* Success checkmark */
+    .success-icon {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: rgba(0,255,136,0.1);
+      border: 2px solid var(--accent-green);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      margin: 0 auto 20px;
+      animation: successPop 0.5s cubic-bezier(0.34,1.56,0.64,1);
+      box-shadow: 0 0 30px rgba(0,255,136,0.3);
+    }
+
+    @keyframes successPop {
+      from { transform: scale(0); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="index.html" class="nav-logo">
+    <div class="nav-logo-icon">⬡</div>
+    <span class="nav-logo-text">BIOAUTH</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="register.html" class="active">Register</a></li>
+    <li><a href="login.html">Login</a></li>
+    <li><a href="about.html">About</a></li>
+  </ul>
+</nav>
+
+<div class="page-wrap">
+  <div class="section-sm">
+
+    <!-- Step Indicators -->
+    <div class="steps fade-in">
+      <div class="step active" id="step-1-ind">
+        <div class="step-num">1</div>
+        <span class="step-label">Credentials</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step" id="step-2-ind">
+        <div class="step-num">2</div>
+        <span class="step-label">Face Scan</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step" id="step-3-ind">
+        <div class="step-num">3</div>
+        <span class="step-label">Complete</span>
+      </div>
+    </div>
+
+    <!-- ===== STEP 1: Credentials ===== -->
+    <div class="auth-card fade-in" id="step-credentials">
+      <div class="auth-header">
+        <div class="auth-icon">👤</div>
+        <h1 class="auth-title">Create Account</h1>
+        <p class="auth-subtitle">Step 1 — Set up your login credentials</p>
+      </div>
+
+      <div id="cred-alert" class="alert alert-hidden"></div>
+
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <div class="input-wrapper">
+          <input type="text" class="form-input" id="username" placeholder="e.g. john_doe" autocomplete="username" />
+          <span class="input-icon" id="username-icon">⬡</span>
+        </div>
+        <div id="username-hint" style="font-size:11px; margin-top:5px; color: var(--text-muted); font-family: var(--font-mono);"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <div class="input-wrapper">
+          <input type="password" class="form-input" id="password" placeholder="Min 8 chars, 1 uppercase, 1 number" />
+          <span class="input-icon">🔒</span>
+        </div>
+        <div class="strength-bar strength-0" id="strength-bar">
+          <div class="strength-seg"></div>
+          <div class="strength-seg"></div>
+          <div class="strength-seg"></div>
+          <div class="strength-seg"></div>
+        </div>
+        <div class="strength-label text-muted" id="strength-label">Enter a password</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Confirm Password</label>
+        <div class="input-wrapper">
+          <input type="password" class="form-input" id="confirm-password" placeholder="Repeat your password" />
+          <span class="input-icon" id="confirm-icon">🔒</span>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full mt-16" id="btn-next-step1">
+        CONTINUE TO FACE SCAN →
+      </button>
+
+      <p class="text-center text-sm text-muted mt-16">
+        Already have an account? <a href="login.html" class="link">Sign In</a>
+      </p>
+    </div>
+
+    <!-- ===== STEP 2: Face Scan ===== -->
+    <div class="auth-card fade-in hidden" id="step-face">
+      <div class="auth-header">
+        <div class="auth-icon">👁️</div>
+        <h1 class="auth-title">Face Enrollment</h1>
+        <p class="auth-subtitle">Step 2 — Register your biometric profile</p>
+      </div>
+
+      <div id="face-alert" class="alert alert-info">
+        🔄 Loading AI face models — please wait...
+      </div>
+
+      <div class="progress-bar" id="model-progress" style="display:none;">
+        <div class="progress-fill" id="model-progress-fill" style="width:0%"></div>
+      </div>
+
+      <!-- Camera -->
+      <div class="camera-container" id="cam-box" style="display:none;">
+        <video id="video" autoplay muted playsinline></video>
+        <canvas id="canvas"></canvas>
+        <div class="camera-overlay">
+          <div class="scan-line"></div>
+          <div class="camera-corner corner-tl"></div>
+          <div class="camera-corner corner-tr"></div>
+          <div class="camera-corner corner-bl"></div>
+          <div class="camera-corner corner-br"></div>
+          <div class="face-guide"></div>
+        </div>
+        <div class="camera-status" id="cam-status">INITIALIZING...</div>
+      </div>
+
+      <!-- Capture Progress Ring -->
+      <div id="capture-progress" style="text-align:center; margin: 12px 0; display:none;">
+        <div class="capture-ring">
+          <svg viewBox="0 0 80 80" width="80" height="80">
+            <circle class="ring-bg" cx="40" cy="40" r="35"/>
+            <circle class="ring-progress" id="ring-progress" cx="40" cy="40" r="35"/>
+          </svg>
+          <div class="ring-num" id="ring-num">0/5</div>
+        </div>
+        <div style="font-family:var(--font-display); font-size:11px; letter-spacing:2px; color:var(--text-secondary);">FRAMES CAPTURED</div>
+      </div>
+
+      <!-- Progress bar for capture -->
+      <div class="progress-bar" id="capture-bar" style="display:none;">
+        <div class="progress-fill" id="capture-fill" style="width:0%"></div>
+      </div>
+
+      <div class="flex" style="gap:8px; margin-top:8px;">
+        <button class="btn btn-primary btn-full" id="btn-start-capture" style="display:none;" disabled>
+          <span class="spinner" style="display:none;" id="scan-spinner"></span>
+          SCAN MY FACE
+        </button>
+        <button class="btn btn-secondary" id="btn-back" style="display:none; min-width:100px;">
+          ← BACK
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== STEP 3: Complete ===== -->
+    <div class="auth-card fade-in hidden" id="step-complete">
+      <div style="text-align:center; padding: 20px 0;">
+        <div class="success-icon">✓</div>
+        <h2 class="auth-title">Registration Complete</h2>
+        <p class="auth-subtitle" style="margin-top: 8px;">Your biometric profile has been created.</p>
+
+        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; margin: 24px 0; text-align:left;">
+          <div style="font-family:var(--font-display); font-size:10px; letter-spacing:2px; color:var(--accent-cyan); margin-bottom:12px;">REGISTRATION SUMMARY</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div>
+              <div class="text-muted" style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; font-family:var(--font-display);">Username</div>
+              <div id="summary-username" style="font-family:var(--font-mono); color:var(--text-primary); margin-top:3px;"></div>
+            </div>
+            <div>
+              <div class="text-muted" style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; font-family:var(--font-display);">Face Profile</div>
+              <div style="font-family:var(--font-mono); color:var(--accent-green); margin-top:3px;">128-D Encoded ✓</div>
+            </div>
+            <div>
+              <div class="text-muted" style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; font-family:var(--font-display);">Password</div>
+              <div style="font-family:var(--font-mono); color:var(--accent-green); margin-top:3px;">SHA-256 Hashed ✓</div>
+            </div>
+            <div>
+              <div class="text-muted" style="font-size:10px; letter-spacing:1.5px; text-transform:uppercase; font-family:var(--font-display);">Auth Type</div>
+              <div style="font-family:var(--font-mono); color:var(--accent-cyan); margin-top:3px;">2FA Biometric</div>
+            </div>
+          </div>
+        </div>
+
+        <a href="login.html" class="btn btn-primary btn-full">
+          → PROCEED TO LOGIN
+        </a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="auth.js"></script>
+<script src="face-auth.js"></script>
+<script>
+  Auth.redirectIfLoggedIn('dashboard.html');
+
+  // ---- DOM refs ----
+  const credCard = document.getElementById('step-credentials');
+  const faceCard  = document.getElementById('step-face');
+  const doneCard  = document.getElementById('step-complete');
+
+  const step1Ind = document.getElementById('step-1-ind');
+  const step2Ind = document.getElementById('step-2-ind');
+  const step3Ind = document.getElementById('step-3-ind');
+
+  const credAlert  = document.getElementById('cred-alert');
+  const faceAlert  = document.getElementById('face-alert');
+
+  const usernameEl  = document.getElementById('username');
+  const passwordEl  = document.getElementById('password');
+  const confirmEl   = document.getElementById('confirm-password');
+  const btnNext     = document.getElementById('btn-next-step1');
+  const btnBack     = document.getElementById('btn-back');
+
+  const camBox      = document.getElementById('cam-box');
+  const videoEl     = document.getElementById('video');
+  const canvasEl    = document.getElementById('canvas');
+  const camStatus   = document.getElementById('cam-status');
+  const btnCapture  = document.getElementById('btn-start-capture');
+  const scanSpinner = document.getElementById('scan-spinner');
+  const captureProg = document.getElementById('capture-progress');
+  const captureBar  = document.getElementById('capture-bar');
+  const captureFill = document.getElementById('capture-fill');
+  const ringProgress = document.getElementById('ring-progress');
+  const ringNum     = document.getElementById('ring-num');
+  const modelProg   = document.getElementById('model-progress');
+  const modelFill   = document.getElementById('model-progress-fill');
+
+  let currentUsername = '';
+  let isCapturing = false;
+
+  // ---- Strength Meter ----
+  passwordEl.addEventListener('input', () => {
+    const score = Auth.passwordStrength(passwordEl.value);
+    const bar = document.getElementById('strength-bar');
+    bar.className = `strength-bar strength-${score}`;
+    const labels = ['Too short', 'Weak', 'Fair', 'Good', 'Strong 🔒'];
+    const colors  = ['var(--text-muted)','var(--accent-red)','var(--accent-yellow)','#ff8c00','var(--accent-green)'];
+    const lbl = document.getElementById('strength-label');
+    lbl.textContent = passwordEl.value ? labels[score] : 'Enter a password';
+    lbl.style.color = passwordEl.value ? colors[score] : '';
+  });
+
+  // Confirm match indicator
+  confirmEl.addEventListener('input', () => {
+    const icon = document.getElementById('confirm-icon');
+    if (!confirmEl.value) { icon.textContent = '🔒'; icon.className = 'input-icon'; return; }
+    if (confirmEl.value === passwordEl.value) {
+      icon.textContent = '✓'; icon.className = 'input-icon active';
+    } else {
+      icon.textContent = '✗'; icon.style.color = 'var(--accent-red)';
+    }
+  });
+
+  // Username availability hint
+  usernameEl.addEventListener('input', () => {
+    const hint = document.getElementById('username-hint');
+    const icon = document.getElementById('username-icon');
+    const v = usernameEl.value.trim();
+    if (!v) { hint.textContent = ''; icon.textContent = '⬡'; icon.style.color = ''; return; }
+    const users = Auth.listUsers();
+    if (users.includes(v.toLowerCase())) {
+      hint.textContent = '✗ Username taken'; hint.style.color = 'var(--accent-red)';
+      icon.textContent = '✗'; icon.style.color = 'var(--accent-red)';
+    } else {
+      hint.textContent = '✓ Available'; hint.style.color = 'var(--accent-green)';
+      icon.textContent = '✓'; icon.style.color = 'var(--accent-green)';
+    }
+  });
+
+  // ---- Alert helpers ----
+  function showAlert(el, msg, type = 'error') {
+    el.className = `alert alert-${type}`;
+    el.innerHTML = `<span>${msg}</span>`;
+  }
+  function hideAlert(el) { el.className = 'alert alert-hidden'; el.innerHTML = ''; }
+
+  // ---- STEP 1: Validate & move to face ----
+  btnNext.addEventListener('click', async () => {
+    hideAlert(credAlert);
+    const username = usernameEl.value.trim();
+    const password = passwordEl.value;
+    const confirm  = confirmEl.value;
+
+    btnNext.disabled = true;
+    btnNext.innerHTML = '<span class="spinner"></span> VALIDATING...';
+
+    const result = await Auth.registerUser(username, password, confirm);
+
+    if (!result.success) {
+      showAlert(credAlert, result.message, 'error');
+      btnNext.disabled = false;
+      btnNext.innerHTML = 'CONTINUE TO FACE SCAN →';
+      return;
+    }
+
+    currentUsername = username;
+    goToStep2();
+  });
+
+  function goToStep2() {
+    credCard.classList.add('hidden');
+    faceCard.classList.remove('hidden');
+    step1Ind.classList.remove('active');
+    step1Ind.classList.add('completed');
+    step2Ind.classList.add('active');
+    loadModelsAndCamera();
+  }
+
+  btnBack.addEventListener('click', () => {
+    FaceAuth.stopCamera();
+    faceCard.classList.add('hidden');
+    credCard.classList.remove('hidden');
+    step2Ind.classList.remove('active');
+    step1Ind.classList.remove('completed');
+    step1Ind.classList.add('active');
+    btnNext.disabled = false;
+    btnNext.innerHTML = 'CONTINUE TO FACE SCAN →';
+  });
+
+  // ---- STEP 2: Load models + camera ----
+  async function loadModelsAndCamera() {
+    modelProg.style.display = 'block';
+    let pct = 0;
+    const steps = ['Loading face detection...', 'Loading landmark model...', 'Loading recognition model...', 'Models ready.'];
+    let si = 0;
+
+    try {
+      await FaceAuth.loadModels((msg) => {
+        si = Math.min(si + 1, 3);
+        pct = (si / 3) * 60;
+        showAlert(faceAlert, '🔄 ' + msg, 'info');
+        modelFill.style.width = pct + '%';
+      });
+
+      showAlert(faceAlert, '📷 Starting camera...', 'info');
+      modelFill.style.width = '80%';
+
+      await FaceAuth.startCamera(videoEl);
+
+      modelFill.style.width = '100%';
+      setTimeout(() => modelProg.style.display = 'none', 400);
+
+      camBox.style.display = 'block';
+      captureBar.style.display = 'block';
+      captureProg.style.display = 'block';
+      btnCapture.style.display = 'flex';
+      btnBack.style.display = 'flex';
+      btnCapture.disabled = false;
+      showAlert(faceAlert, '✅ Camera ready. Position your face inside the oval guide and click SCAN MY FACE.', 'success');
+
+    } catch (err) {
+      showAlert(faceAlert, '❌ ' + err.message, 'error');
+      btnBack.style.display = 'flex';
+    }
+  }
+
+  // ---- STEP 2: Capture face ----
+  btnCapture.addEventListener('click', async () => {
+    if (isCapturing) return;
+    isCapturing = true;
+    btnCapture.disabled = true;
+    scanSpinner.style.display = 'inline-block';
+    btnCapture.querySelector(':not(.spinner)') && (btnCapture.childNodes[1].textContent = ' SCANNING...');
+
+    try {
+      const descriptor = await FaceAuth.enrollFace(videoEl, canvasEl, (status, progress) => {
+        camStatus.textContent = status.toUpperCase();
+
+        // Update ring
+        const captured = Math.round(progress * 5);
+        const offset = 220 - (220 * progress);
+        ringProgress.style.strokeDashoffset = offset;
+        ringNum.textContent = `${captured}/5`;
+
+        // Update bar
+        captureFill.style.width = (progress * 100) + '%';
+
+        showAlert(faceAlert, '🔍 ' + status, 'info');
+      });
+
+      // Save descriptor
+      const saveResult = Auth.updateFaceDescriptor(currentUsername, descriptor);
+      if (!saveResult.success) throw new Error(saveResult.message);
+
+      FaceAuth.stopCamera();
+      showStep3();
+
+    } catch (err) {
+      showAlert(faceAlert, '❌ ' + err.message, 'error');
+      isCapturing = false;
+      btnCapture.disabled = false;
+      scanSpinner.style.display = 'none';
+    }
+  });
+
+  function showStep3() {
+    faceCard.classList.add('hidden');
+    doneCard.classList.remove('hidden');
+    step2Ind.classList.remove('active');
+    step2Ind.classList.add('completed');
+    step3Ind.classList.add('active', 'completed');
+    document.getElementById('summary-username').textContent = currentUsername;
+  }
+</script>
+</body>
+</html>
